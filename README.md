@@ -1,7 +1,7 @@
 # Linux tools
 ## bcp
-Create file backups like filename.YYY-MM-DD_HH:MM.bak
-usage: bcp file
+Create file backups like filename.YYY-MM-DD_HH:MM.bak<br>
+usage: bcp file<br>
 path: /usr/local/bin/bcp
 
 ## bash_aliases

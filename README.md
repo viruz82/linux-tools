@@ -14,13 +14,13 @@ alias ls-l='ls -lh --color=auto'<br>
 alias das='dig +short a'<br>
 alias dmx='dig +short mx'<br>
 alias dix='dig +short -x'<br>
-alias o='less'<br><br>
-alias ..='cd ..'<br><br>
+alias o='less'<br>
+alias ..='cd ..'<br>
 alias ...='cd ../..'<br>
 alias cd..='cd ..'<br>
 alias rd='rmdir'<br>
 alias md='mkdir -p'<br>
-alias vi='vi -c ":sy on<br>"'
+alias vi='vi -c ":sy on"'<br>
 alias vi='vim -c ":sy on"'
 
 path: user's home (/root/.bash_aliases)

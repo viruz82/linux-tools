@@ -29,5 +29,5 @@ path: user's home (/root/.bash_aliases)
 path: /etc/update-motd.d/
 
 ## bashrc
-file: /etc/bash.bashrc
+file: /etc/bash.bashrc <br>
 append: force_color_prompt=yes

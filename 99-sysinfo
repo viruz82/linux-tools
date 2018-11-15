@@ -1,0 +1,40 @@
+#!/bin/bash
+
+HOSTNAME=`uname -n`
+IP=`/sbin/ip -o -4 addr list ens18 | /bin/grep global | /usr/bin/awk '{print $4}' | /usr/bin/cut -d/ -f1`
+KERNEL=`uname -r`
+CPU=`uname -p`
+ARCH=`uname -m`
+LOAD=`cat /proc/loadavg | cut -d" " -f1-3`
+PROCR=`awk '{ gsub("[0-9]+/", "") ; print $4 }' /proc/loadavg`
+UP=$(echo `uptime` | sed 's/^.\+up\ \+\([^,]*\).*/\1/g')
+CPUTIME=$(ps -eo pcpu | awk 'NR>1' | awk '{tot=tot+$1} END {print tot}')
+CPUCORES=$(cat /proc/cpuinfo | grep -c processor)
+RAM=`free -mh | grep Mem | awk {'print $2'}`
+RAMU=`free -mh | grep Mem | awk {'print $3'}`
+RAMUP=`free | grep Mem | awk '{printf "%.0f\n", $3/$2 * 100.0}'`%
+RAMF=`free -mh | grep Mem | awk {'print $4'}`
+RAMFP=`free | grep Mem | awk '{printf "%.0f\n", $4/$2 * 100.0}'`%
+HDD=`df -h / | tail -n 1 | awk '{print $2}'`
+HDDU=`df -h / | tail -n 1 | awk '{print $3}'`
+HDDUP=`df -h / | tail -n 1 | awk '{print $5}'`
+HDDF=`df -h / | tail -n 1 | awk '{print $4}'`
+HDDFP=`df -h / | tail -n 1 | awk '{printf "%.0f\n", $4/$2 * 100.0}'`%
+
+# The different colours as variables
+W="\033[01;37m"
+R="\033[01;31m"
+X="\033[00;37m"
+echo -e "$R#=============================================================#"
+echo -e "    $R Host            $W= $HOSTNAME "
+echo -e "    $R IP              $W= $IP "
+echo -e "    $R Arch            $W= $ARCH "
+echo -e "    $R Kernel          $W= $KERNEL "
+echo -e "    $R Processes       $W= $PROCR "
+echo -e "    $R Uptime          $W= $UP "
+echo -e "    $R Load (avg)      $W= $LOAD "
+echo -e "    $R CPU usage (avg) $W= `echo $CPUTIME / $CPUCORES | bc`% "
+echo -e "    $R RAM             $W= $RAM, used: $RAMU ($RAMUP), free: $RAMF ($RAMFP) "
+echo -e "    $R Disk (/)        $W= $HDD, used: $HDDU ($HDDUP), free: $HDDF ($HDDFP) "
+echo -e "$R#=============================================================#"
+echo -e $X

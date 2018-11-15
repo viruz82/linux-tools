@@ -27,3 +27,7 @@ path: user's home (/root/.bash_aliases)
 
 ## 99-sysinfo
 path: /etc/update-motd.d/
+
+## bashrc
+file: /etc/bash.bashrc
+append: force_color_prompt=yes

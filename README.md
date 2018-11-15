@@ -24,3 +24,6 @@ alias vi='vi -c ":sy on"'<br>
 alias vi='vim -c ":sy on"'
 
 path: user's home (/root/.bash_aliases)
+
+## 99-sysinfo
+path: /etc/update-motd.d/

@@ -19,7 +19,7 @@ HDD=`df -h / | tail -n 1 | awk '{print $2}'`
 HDDU=`df -h / | tail -n 1 | awk '{print $3}'`
 HDDUP=`df -h / | tail -n 1 | awk '{print $5}'`
 HDDF=`df -h / | tail -n 1 | awk '{print $4}'`
-HDDFP=`df -h / | tail -n 1 | awk '{printf "%.0f\n", $4/$2 * 100.0}'`%
+HDDFP=`df / | tail -n 1 | awk '{printf "%.0f\n", $4/$2 * 100.0}'`%
 
 # The different colours as variables
 W="\033[01;37m"

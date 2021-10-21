@@ -2,6 +2,7 @@
 
 HOSTNAME=`uname -n`
 IP=`/sbin/ip -o -4 addr list ens18 | /bin/grep global | /usr/bin/awk '{print $4}' | /usr/bin/cut -d/ -f1`
+IPv6=`ip -6 addr show dev eth0 | awk '/inet6/{print $2}' |  grep '::1' | awk -F'/' '{print $1}'`
 KERNEL=`uname -r`
 CPU=`uname -p`
 ARCH=`uname -m`
@@ -28,6 +29,7 @@ X="\033[00;37m"
 echo -e "$R#=============================================================#"
 echo -e "    $R Host            $W= $HOSTNAME "
 echo -e "    $R IP              $W= $IP "
+echo -e "    $R IPv6            $W= $IPv6 "
 echo -e "    $R Arch            $W= $ARCH "
 echo -e "    $R Kernel          $W= $KERNEL "
 echo -e "    $R Processes       $W= $PROCR "

@@ -2,7 +2,7 @@
 ## bcp
 Create file backups like filename.YYY-MM-DD_HH:MM.bak<br>
 usage: bcp file<br>
-path: /usr/local/bin/bcp
+path: /usr/local/bin/bcp<br>
 chmod +x bcp && cp bcp /usr/local/bin/
 
 ## bash_aliases
@@ -24,14 +24,14 @@ alias md='mkdir -p'<br>
 alias vi='vi -c ":sy on"'<br>
 alias vi='vim -c ":sy on"'
 
-path: user's home (/root/.bash_aliases)
+path: user's home (/root/.bash_aliases)<br>
 cp bash_aliases /root/.bash_aliases
 
 ## 99-sysinfo
-path: /etc/update-motd.d/
+path: /etc/update-motd.d/<br>
 chmod +x 99-sysinfo && cp 99-sysinfo /etc/update-motd.d/
 
 ## bashrc
 file: /etc/bash.bashrc <br>
-append: force_color_prompt=yes
+append: force_color_prompt=yes<br>
 echo force_color_prompt=yes >> /etc/bash.bashrc

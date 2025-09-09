@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
 set -e
 
-# Usage-Hilfe
+# ================================
+# Cronicle Worker Manager (interaktiv)
+# Installiert oder entfernt einen minimalen Cronicle-Worker
+# mit automatischer Node.js-Architektur-Erkennung
+# ================================
+
+NODE_VERSION="v22.19.0"
+
 usage() {
   cat <<EOF
 Usage:
-  $(basename "$0")            – interaktives Setup oder Deinstallieren
-    install   → Cronicle-Worker interaktiv einrichten
-    uninstall → Komplett entfernen
+  $(basename "$0")  – interaktives Setup oder Deinstallieren
 EOF
   exit 1
 }
 
-# Skript darf keine Argumente bekommen
 if [ $# -gt 0 ]; then
   echo "Dieses Skript arbeitet rein interaktiv. Keine Parameter erlaubt."
   usage
@@ -44,22 +48,51 @@ if [ "$ACTION" = "uninstall" ]; then
   exit 0
 fi
 
-# Installations-Defaults
+# --- Architektur erkennen ---
+ARCH_DETECTED="$(uname -m)"
+case "$ARCH_DETECTED" in
+  x86_64)   NODE_ARCH="linux-x64" ;;
+  aarch64)  NODE_ARCH="linux-arm64" ;;
+  armv7l)   NODE_ARCH="linux-armv7l" ;;
+  armv6l)   NODE_ARCH="linux-armv6l" ;;
+  *)
+    echo "⚠️  Unbekannte Architektur: $ARCH_DETECTED"
+    NODE_ARCH=""
+    ;;
+esac
+
+# Falls unbekannt oder Benutzer möchte überschreiben → Auswahlmenü
+if [ -z "$NODE_ARCH" ]; then
+  echo "Bitte Architektur auswählen:"
+  select opt in "linux-x64" "linux-arm64" "linux-armv7l" "linux-armv6l"; do
+    NODE_ARCH="$opt"
+    break
+  done
+else
+  echo "✅ Architektur automatisch erkannt: $NODE_ARCH"
+  read -p "Möchtest du diese Auswahl ändern? (y/N): " CHANGE
+  if [[ "$CHANGE" =~ ^[Yy]$ ]]; then
+    select opt in "linux-x64" "linux-arm64" "linux-armv7l" "linux-armv6l"; do
+      NODE_ARCH="$opt"
+      break
+    done
+  fi
+fi
+
+# --- Interaktive Eingaben ---
 DEFAULT_WORKER_NAME="$(hostname)"
 DEFAULT_SMTP_HOSTNAME="localhost"
 DEFAULT_SMTP_PORT="25"
+DEFAULT_EMAIL_FROM="cronicle@example.com"
 
-# Master-IP abfragen (erforderlich)
 while [ -z "$MASTER_IP" ]; do
   read -p "Master IP (z.B. 10.0.0.144): " MASTER_IP
 done
 
-# Secret-Key abfragen (erforderlich)
 while [ -z "$SECRET_KEY" ]; do
   read -p "Secret-Key des Masters: " SECRET_KEY
 done
 
-# Optionale Werte
 read -p "Worker-Name [${DEFAULT_WORKER_NAME}]: " WORKER_NAME
 WORKER_NAME=${WORKER_NAME:-$DEFAULT_WORKER_NAME}
 
@@ -69,6 +102,9 @@ SMTP_HOSTNAME=${SMTP_HOSTNAME:-$DEFAULT_SMTP_HOSTNAME}
 read -p "SMTP Port [${DEFAULT_SMTP_PORT}]: " SMTP_PORT
 SMTP_PORT=${SMTP_PORT:-$DEFAULT_SMTP_PORT}
 
+read -p "E-Mail Absenderadresse (email_from) [${DEFAULT_EMAIL_FROM}]: " EMAIL_FROM
+EMAIL_FROM=${EMAIL_FROM:-$DEFAULT_EMAIL_FROM}
+
 echo
 echo "→ Konfiguration:"
 echo "   Master IP:      $MASTER_IP"
@@ -76,64 +112,61 @@ echo "   Secret-Key:     [verdeckt]"
 echo "   Worker-Name:    $WORKER_NAME"
 echo "   SMTP Hostname:  $SMTP_HOSTNAME"
 echo "   SMTP Port:      $SMTP_PORT"
+echo "   email_from:     $EMAIL_FROM"
+echo "   Node.js Build:  $NODE_ARCH"
 echo
 
-# 1) Basis-Verzeichnis anlegen
+# --- Installation ---
 mkdir -p /opt/cronicle-worker
 cd /opt/cronicle-worker
 
-# 1a) Symlink unter /root
 ln -sfn /opt/cronicle-worker /root/cronicle-worker
 
-# 2) Node.js 22.19.0 installieren
-curl -fsSL https://nodejs.org/dist/v22.19.0/node-v22.19.0-linux-x64.tar.xz \
-  -o node.tar.xz
+NODE_TARBALL="node-${NODE_VERSION}-${NODE_ARCH}.tar.xz"
+NODE_URL="https://nodejs.org/dist/${NODE_VERSION}/${NODE_TARBALL}"
+
+echo "→ Lade Node.js ${NODE_VERSION} für ${NODE_ARCH} herunter..."
+curl -fsSL "$NODE_URL" -o node.tar.xz
 tar -xf node.tar.xz --strip-components=1
 rm node.tar.xz
 
-# 3) Cronicle klonen
 git clone https://github.com/jhuckaby/Cronicle.git app
 
-# 4) Lokale Node in den PATH
 export PATH=/opt/cronicle-worker/bin:$PATH
 
-# 5) Abhängigkeiten installieren
 cd app
 npm install --omit=dev
 
-# 6) Konfiguration anpassen
+# --- Config ---
 APP_ROOT="/opt/cronicle-worker/app"
 APP_CONF="$APP_ROOT/conf"
 SAMPLE_CONF="$APP_ROOT/sample_conf"
 CONFIG_JSON="$APP_CONF/config.json"
 SAMPLE_CONFIG="$APP_CONF/config.sample.json"
 
-# 6a) sample_conf → conf kopieren, falls notwendig
 if [ ! -d "$APP_CONF" ] && [ -d "$SAMPLE_CONF" ]; then
   cp -r "$SAMPLE_CONF" "$APP_CONF"
 fi
 
-# 6b) config.json aus sample erstellen, falls nicht vorhanden
 if [ ! -f "$CONFIG_JSON" ] && [ -f "$SAMPLE_CONFIG" ]; then
   cp "$SAMPLE_CONFIG" "$CONFIG_JSON"
 fi
 
-# 6c) Backup der Config
 cp "$CONFIG_JSON" "${CONFIG_JSON}.bak"
 
-# 6d) Werte in config.json setzen
 sed -i 's#^\s*"base_app_url".*#    "base_app_url": "http://'"$MASTER_IP"':3012",#' "$CONFIG_JSON"
 sed -i 's#^\s*"secret_key".*#    "secret_key": "'"$SECRET_KEY"'",#' "$CONFIG_JSON"
 sed -i '/"secret_key"/a\    "role": "worker",\n    "hostname": "'"$WORKER_NAME"'",' "$CONFIG_JSON"
 sed -i 's#^\s*"smtp_hostname".*#    "smtp_hostname": "'"$SMTP_HOSTNAME"'",#' "$CONFIG_JSON"
 sed -i 's#^\s*"smtp_port".*#    "smtp_port": '"$SMTP_PORT"',#' "$CONFIG_JSON"
+sed -i 's#^\s*"email_from".*#    "email_from": "'"$EMAIL_FROM"'",#' "$CONFIG_JSON"
 
-# 7) Worker bauen & starten
+# --- Build & Start ---
 cd "$APP_ROOT"
 node bin/build.js dist
 ./bin/control.sh start
 
-# 8) systemd-Service anlegen & aktivieren
+# --- systemd ---
 cat > /etc/systemd/system/cronicle-worker.service << 'EOF'
 [Unit]
 Description=Cronicle Worker Service

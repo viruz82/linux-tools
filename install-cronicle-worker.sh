@@ -54,7 +54,11 @@ case "$ARCH_DETECTED" in
   x86_64)   NODE_ARCH="linux-x64" ;;
   aarch64)  NODE_ARCH="linux-arm64" ;;
   armv7l)   NODE_ARCH="linux-armv7l" ;;
-  armv6l)   NODE_ARCH="linux-armv6l" ;;
+  armv6l)
+    NODE_ARCH="linux-armv6l"
+    NODE_VERSION="v22.19.0"
+    NODE_URL="https://unofficial-builds.nodejs.org/download/release/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_ARCH}.tar.xz"
+    ;;
   *)
     echo "⚠️  Unbekannte Architektur: $ARCH_DETECTED"
     NODE_ARCH=""
@@ -122,8 +126,11 @@ cd /opt/cronicle-worker
 
 ln -sfn /opt/cronicle-worker /root/cronicle-worker
 
-NODE_TARBALL="node-${NODE_VERSION}-${NODE_ARCH}.tar.xz"
-NODE_URL="https://nodejs.org/dist/${NODE_VERSION}/${NODE_TARBALL}"
+# Node.js Download-URL setzen, falls nicht schon für armv6l definiert
+if [ -z "$NODE_URL" ]; then
+  NODE_TARBALL="node-${NODE_VERSION}-${NODE_ARCH}.tar.xz"
+  NODE_URL="https://nodejs.org/dist/${NODE_VERSION}/${NODE_TARBALL}"
+fi
 
 echo "→ Lade Node.js ${NODE_VERSION} für ${NODE_ARCH} herunter..."
 curl -fsSL "$NODE_URL" -o node.tar.xz

@@ -7,6 +7,10 @@ set -e
 # mit automatischer Node.js-Architektur-Erkennung
 # ================================
 
+# Basis-Installationspfad
+BASE_DIR="/opt/cronicle-worker"
+
+# Node.js Version (Standard)
 NODE_VERSION="v22.19.0"
 
 usage() {
@@ -42,7 +46,7 @@ if [ "$ACTION" = "uninstall" ]; then
   systemctl disable cronicle-worker.service 2>/dev/null || true
   rm -f /etc/systemd/system/cronicle-worker.service
   systemctl daemon-reload
-  rm -rf /opt/cronicle-worker
+  rm -rf "$BASE_DIR"
   rm -f /root/cronicle-worker
   echo "✅ Cronicle-Worker entfernt."
   exit 0
@@ -118,13 +122,14 @@ echo "   SMTP Hostname:  $SMTP_HOSTNAME"
 echo "   SMTP Port:      $SMTP_PORT"
 echo "   email_from:     $EMAIL_FROM"
 echo "   Node.js Build:  $NODE_ARCH"
+echo "   Installationspfad: $BASE_DIR"
 echo
 
 # --- Installation ---
-mkdir -p /opt/cronicle-worker
-cd /opt/cronicle-worker
+mkdir -p "$BASE_DIR"
+cd "$BASE_DIR"
 
-ln -sfn /opt/cronicle-worker /root/cronicle-worker
+ln -sfn "$BASE_DIR" /root/cronicle-worker
 
 # Node.js Download-URL setzen, falls nicht schon für armv6l definiert
 if [ -z "$NODE_URL" ]; then
@@ -139,17 +144,18 @@ rm node.tar.xz
 
 git clone https://github.com/jhuckaby/Cronicle.git app
 
-export PATH=/opt/cronicle-worker/bin:$PATH
+export PATH="$BASE_DIR/bin:$PATH"
 
 cd app
 npm install --omit=dev
 
 # --- Config ---
-APP_ROOT="/opt/cronicle-worker/app"
+APP_ROOT="$BASE_DIR/app"
 APP_CONF="$APP_ROOT/conf"
 SAMPLE_CONF="$APP_ROOT/sample_conf"
 CONFIG_JSON="$APP_CONF/config.json"
 SAMPLE_CONFIG="$APP_CONF/config.sample.json"
+LOG_DIR="$APP_ROOT/logs"
 
 if [ ! -d "$APP_CONF" ] && [ -d "$SAMPLE_CONF" ]; then
   cp -r "$SAMPLE_CONF" "$APP_CONF"
@@ -159,6 +165,7 @@ if [ ! -f "$CONFIG_JSON" ] && [ -f "$SAMPLE_CONFIG" ]; then
   cp "$SAMPLE_CONFIG" "$CONFIG_JSON"
 fi
 
+mkdir -p "$LOG_DIR"
 cp "$CONFIG_JSON" "${CONFIG_JSON}.bak"
 
 sed -i 's#^\s*"base_app_url".*#    "base_app_url": "http://'"$MASTER_IP"':3012",#' "$CONFIG_JSON"
@@ -167,6 +174,7 @@ sed -i '/"secret_key"/a\    "role": "worker",\n    "hostname": "'"$WORKER_NAME"'
 sed -i 's#^\s*"smtp_hostname".*#    "smtp_hostname": "'"$SMTP_HOSTNAME"'",#' "$CONFIG_JSON"
 sed -i 's#^\s*"smtp_port".*#    "smtp_port": '"$SMTP_PORT"',#' "$CONFIG_JSON"
 sed -i 's#^\s*"email_from".*#    "email_from": "'"$EMAIL_FROM"'",#' "$CONFIG_JSON"
+sed -i 's#^\s*"log_dir".*#    "log_dir": "'"$LOG_DIR"'",#' "$CONFIG_JSON"
 
 # --- Build & Start ---
 cd "$APP_ROOT"
@@ -174,17 +182,17 @@ node bin/build.js dist
 ./bin/control.sh start
 
 # --- systemd ---
-cat > /etc/systemd/system/cronicle-worker.service << 'EOF'
+cat > /etc/systemd/system/cronicle-worker.service <<EOF
 [Unit]
 Description=Cronicle Worker Service
 After=network.target
 
 [Service]
 Type=forking
-Environment=PATH=/opt/cronicle-worker/bin:/usr/bin:/bin
-WorkingDirectory=/opt/cronicle-worker/app
-ExecStart=/opt/cronicle-worker/app/bin/control.sh start
-ExecStop=/opt/cronicle-worker/app/bin/control.sh stop
+Environment=PATH=$BASE_DIR/bin:/usr/bin:/bin
+WorkingDirectory=$APP_ROOT
+ExecStart=$APP_ROOT/bin/control.sh start
+ExecStop=$APP_ROOT/bin/control.sh stop
 Restart=on-failure
 User=root
 
@@ -197,5 +205,5 @@ systemctl enable cronicle-worker.service
 
 echo
 echo "🎉 Installation abgeschlossen."
-echo "Symlink: /root/cronicle-worker → /opt/cronicle-worker"
+echo "Symlink: /root/cronicle-worker → $BASE_DIR"
 echo "Service-Status prüfen: systemctl status cronicle-worker.service"
